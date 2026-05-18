@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師管理端 - 學生表現監控中心</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 20px; margin: 0; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        h1 { margin: 0; color: #1a202c; font-size: 1.5em; }
+        .main { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+        .col { flex: 1; min-width: 300px; background: #edf2f7; padding: 20px; border-radius: 15px; min-height: 80vh; }
+        .title-box { text-align: center; padding: 12px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; font-size: 1.1em; }
+        
+        .card { background: white; padding: 18px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border-top: 4px solid; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        .correct-card { border-top-color: #48bb78; }
+        .wrong-card { border-top-color: #f56565; }
+
+        .info-row { font-size: 0.85em; color: #718096; margin-top: 4px; }
+        .math-result { background: #f7fafc; padding: 8px 12px; margin: 10px 0; font-family: monospace; border-radius: 6px; font-size: 1.05em; color: #2d3748; font-weight: bold; border-left: 3px solid #cbd5e0; }
+        
+        .image-container { position: relative; margin-top: 10px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .image-tag { position: absolute; top: 5px; left: 5px; background: rgba(0,0,0,0.6); color: white; padding: 2px 8px; font-size: 0.75em; border-radius: 4px; z-index: 1; }
+        img { width: 100%; display: block; cursor: zoom-in; }
+
+        button { padding: 10px 18px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 0.9em; }
+        .btn-refresh { background: #3182ce; color: white; margin-right: 8px; }
+        .btn-clear { background: #e53e3e; color: white; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>學生練習數據收集區</h1>
+        <div>
+            <button class="btn-refresh" onclick="fetchData()">🔄 刷新數據</button>
+            <button class="btn-clear" onclick="clearAll()">🗑️ 清空紀錄</button>
+        </div>
+    </header>
+
+    <div class="main">
+        <div class="col">
+            <div id="cTitle" class="title-box" style="background:#c6f6d5; color:#22543d;">✅ 正確 (0 人 / 0%)</div>
+            <div id="correctList"></div>
+        </div>
+        <div class="col">
+            <div id="wTitle" class="title-box" style="background:#fed7d7; color:#742a2a;">❌ 錯誤 (0 人 / 0%)</div>
+            <div id="wrongList"></div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ 請確保此處的 Worker 網址與您部署的 Cloudflare 一致
+        const workerUrl = "https://dry-frog-fc8b.cnlo.workers.dev";
+
+        async function fetchData() {
+            try {
+                const r = await fetch(workerUrl);
+                const list = await r.json();
+
+                const cL = document.getElementById('correctList');
+                const wL = document.getElementById('wrongList');
+                cL.innerHTML = "";
+                wL.innerHTML = "";
+
+                let correct = 0;
+                let wrong = 0;
+
+                list.forEach(item => {
+                    const isOk = (String(item.error_percent) === "0");
+                    if (isOk) correct++; else wrong++;
+
+                    const cardClass = isOk ? "correct-card" : "wrong-card";
+                    const html = `
+                        <div class="card ${cardClass}">
+                            <b>${item.student_name || '未填寫'}</b> 
+                            <span style="color:#718096">(${item.student_class || '-'}/${item.student_no || '-'})</span>
+                            <div class="info-row">題目：${item.quiz_content} | 時間：${item.created_at || ''}</div>
+                            <div class="math-result">AI 辨識：${item.identified_text || '無資料'}</div>
+                            <div class="image-container">
+                                <div class="image-tag">草稿+答案 (點擊放大)</div>
+                                <img src="data:image/jpeg;base64,${item.image_data}" onclick="window.open(this.src)">
+                            </div>
+                        </div>`;
+                    
+                    if(isOk) cL.innerHTML += html; else wL.innerHTML += html;
+                });
+
+                // 核心數據計算邏輯
+                const total = correct + wrong;
+                const cRate = total === 0 ? 0 : Math.round((correct / total) * 100);
+                const wRate = total === 0 ? 0 : Math.round((wrong / total) * 100);
+
+                // 更新看板文字與即時百分比
+                document.getElementById('cTitle').innerText = `✅ 正確 (${correct} 人 / 正確率 ${cRate}%)`;
+                document.getElementById('wTitle').innerText = `❌ 錯誤 (${wrong} 人 / 錯誤率 ${wRate}%)`;
+
+            } catch(e) {
+                alert("獲取數據失敗: " + e.message);
+            }
+        }
+
+        async function clearAll() {
+            if(!confirm("確定要刪除所有學生提交紀錄嗎？此操作不可恢復。")) return;
+            try {
+                await fetch(workerUrl, { method: 'DELETE' });
+                fetchData();
+            } catch(e) {
+                alert("清空失敗: " + e.message);
+            }
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
