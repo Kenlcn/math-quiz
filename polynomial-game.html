@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>多項式乘法 - (x+a)(x+b)</title>
+<style>
+html, body { height: 100%; overflow: hidden; width: 100%; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+body {
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+#game-container {
+  background: rgba(255,255,255,0.06);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 28px;
+  padding: 16px 18px 18px;
+  max-width: 860px;
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  touch-action: none;
+}
+h1 { text-align: center; font-size: 22px; font-weight: 800; color: #f0e9ff; margin-bottom: 2px; }
+h1 span { color: #ffd700; }
+.formula-box {
+  text-align: center;
+  padding: 8px 0 10px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 2px;
+}
+.formula-box .highlight-x { color: #6eb5ff; }
+.formula-box .highlight-a { color: #66d9a0; }
+.formula-box .highlight-b { color: #ff7b7b; }
+.instruction {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+.instruction strong { color: rgba(255,255,255,0.7); }
+#answer-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  margin: 26px auto 12px;
+  flex-wrap: wrap;
+}
+.term-group { display: flex; align-items: center; gap: 3px; }
+.term-group .foil-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.30);
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+.term-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  padding: 5px 7px;
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.plus-sign { font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.25); margin: 0 1px; }
+.times-sign { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.20); }
+.var-slot {
+  width: 48px; height: 48px;
+  border: 3px dashed rgba(255,255,255,0.18);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  transition: all 0.2s;
+  background: rgba(255,255,255,0.04);
+}
+.var-slot.drag-over {
+  border-color: #ffd700;
+  background: rgba(255,215,0,0.10);
+  transform: scale(1.08);
+  box-shadow: 0 0 20px rgba(255,215,0,0.2);
+}
+.var-slot.filled { border-style: solid; }
+.var-slot.correct-flash { animation: correctPulse 0.5s ease; }
+.var-slot.wrong-shake { animation: wrongShake 0.5s ease; }
+@keyframes correctPulse { 0%{transform:scale(1)} 40%{transform:scale(1.15);box-shadow:0 0 30px rgba(255,215,0,0.5)} 100%{transform:scale(1)} }
+@keyframes wrongShake { 0%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(4px)} 100%{transform:translateX(0)} }
+#vars-area {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 4px 0 10px;
+  flex-wrap: wrap;
+  min-height: 56px;
+}
+.var-block {
+  width: 76px; height: 56px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  position: relative;
+  touch-action: none;
+}
+.var-block .count-badge {
+  position: absolute;
+  top: -6px; right: -6px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+.var-block.empty { opacity: 0.2; pointer-events: none; transform: scale(0.85); }
+.var-block-x { background: linear-gradient(135deg, #2196F3, #1565C0); }
+.var-block-a { background: linear-gradient(135deg, #4CAF50, #2E7D32); }
+.var-block-b { background: linear-gradient(135deg, #f44336, #c62828); }
+#status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 4px 0;
+}
+#score { font-size: 16px; font-weight: 700; color: #ffd700; }
+#score span { color: #fff; }
+#progress-dots { display: flex; gap: 4px; align-items: center; }
+.dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.10);
+  border: 2px solid rgba(255,255,255,0.15);
+  transition: all 0.4s;
+}
+.dot.filled { background: #ffd700; border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.4); }
+#reset-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #ccc;
+  padding: 7px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+#message {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  min-height: 32px;
+  margin: 4px 0 0;
+  padding: 6px;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+#message.win { color: #ffd700; background: rgba(255,215,0,0.12); font-size: 19px; }
+#message.hint { color: #aac; background: rgba(255,255,255,0.04); font-size: 13px; font-weight: 400; }
+#canvas-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 999;
+}
+.dragging-clone {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  transform: rotate(3deg) scale(1.1);
+  transition: none;
+}
+@media (max-width: 700px) {
+  #game-container { padding: 12px 10px 16px; border-radius: 20px; }
+  h1 { font-size: 18px; }
+  .formula-box { font-size: 19px; padding: 5px 0 7px; }
+  .var-slot { width: 42px; height: 42px; font-size: 17px; border-width: 2px; }
+  .var-block { width: 68px; height: 52px; font-size: 20px; }
+  .term-pair { padding: 4px 6px; border-radius: 10px; }
+  .plus-sign { font-size: 16px; }
+  .times-sign { font-size: 13px; }
+  #vars-area { gap: 10px; }
+  .instruction { font-size: 12px; }
+}
+@media (max-width: 480px) {
+  #game-container { padding: 10px 8px 14px; border-radius: 16px; }
+  h1 { font-size: 15px; }
+  .formula-box { font-size: 16px; padding: 4px 0 6px; }
+  .var-slot { width: 36px; height: 36px; font-size: 14px; border-width: 2px; border-radius: 8px; }
+  .var-block { width: 58px; height: 46px; font-size: 18px; border-radius: 10px; }
+  .var-block .count-badge { width: 18px; height: 18px; font-size: 10px; top: -6px; right: -6px; }
+  .term-pair { padding: 3px 5px; border-radius: 8px; gap: 2px; }
+  .plus-sign { font-size: 13px; }
+  .times-sign { font-size: 11px; }
+  #vars-area { gap: 8px; }
+  .instruction { font-size: 11px; }
+  .foil-tag { font-size: 10px !important; top: -24px !important; }
+  #answer-area { margin: 20px auto 10px; gap: 3px; }
+  #score { font-size: 13px; }
+  #reset-btn { font-size: 11px; padding: 5px 12px; }
+  #message { font-size: 15px; min-height: 28px; }
+  .dot { width: 10px; height: 10px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas-overlay"></canvas>
+
+<div id="game-container">
+  <h1>&#x1F3AE; 多項式乘法 <span>F. O. I. L.</span></h1>
+
+  <div class="formula-box">
+    (<span class="highlight-x">x</span> + <span class="highlight-a">a</span>)(<span class="highlight-x">x</span> + <span class="highlight-b">b</span>)
+    <span style="color:rgba(255,255,255,0.20);margin:0 5px;">=</span>
+    <span style="color:#ffd700;font-size:18px;">? + ? + ? + ?</span>
+  </div>
+
+  <div class="instruction">
+    把下方的 <strong>x</strong>、<strong>a</strong>、<strong>b</strong> 方塊拖到正確的空格！
+  </div>
+
+  <div id="answer-area"></div>
+  <div id="vars-area"></div>
+
+  <div id="status-bar">
+    <div id="score">&#x1F3C6; <span id="score-num">0</span> / 8</div>
+    <div id="progress-dots"></div>
+    <button id="reset-btn">&#x1F504; 重新開始</button>
+  </div>
+  <div id="message" class="hint">&#x1F447; 拖曳 x、a、b 到上方空格</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var VARS = [
+  { id:'x', label:'x', color:'#6eb5ff', css:'var-block-x', total:4 },
+  { id:'a', label:'a', color:'#66d9a0', css:'var-block-a', total:3 },
+  { id:'b', label:'b', color:'#ff7b7b', css:'var-block-b', total:3 }
+];
+
+var SLOTS = [
+  { id:0, pair:0, correct:'x' }, { id:1, pair:0, correct:'x' },
+  { id:2, pair:1, correct:'x' }, { id:3, pair:1, correct:'b' },
+  { id:4, pair:2, correct:'a' }, { id:5, pair:2, correct:'x' },
+  { id:6, pair:3, correct:'a' }, { id:7, pair:3, correct:'b' }
+];
+
+var FOIL_LABELS = ['F','O','I','L'];
+var FOIL_COLORS = ['#b0c4ff','#d8b4fe','#a0f0e0','#ffd699'];
+var FOIL_BG = ['#2C3E80','#6c2d82','#0e6655','#a05500'];
+
+var state = { score:0, usedCounts:{}, slotContents:{} };
+var animFrame = null;
+var particles = [];
+var dragData = null;
+
+var answerEl = document.getElementById('answer-area');
+var varsEl = document.getElementById('vars-area');
+var scoreNum = document.getElementById('score-num');
+var dotsContainer = document.getElementById('progress-dots');
+var messageEl = document.getElementById('message');
+var canvas = document.getElementById('canvas-overlay');
+var ctx = canvas.getContext('2d');
+var resetBtn = document.getElementById('reset-btn');
+
+// ─── Audio (init on first user touch) ─────────────────
+var audioCtx = null;
+function initAudio() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+}
+function resumeAudio() {
+  if (audioCtx && audioCtx.state==='suspended') { audioCtx.resume(); }
+}
+document.addEventListener('touchstart', function(){ initAudio(); }, { once:true });
+document.addEventListener('mousedown', function(){ initAudio(); }, { once:true });
+
+function playSound(notes, dur) {
+  try {
+    if (!audioCtx) initAudio();
+    resumeAudio();
+    var ctx = audioCtx;
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    notes.forEach(function(freq, i) {
+      var o = ctx.createOscillator();
+      var g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.2, t + i*0.08);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i*0.08 + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t + i*0.08); o.stop(t + i*0.08 + dur);
+    });
+  } catch(e) {}
+}
+function playCorrect() { playSound([523,659,784,1047], 0.35); }
+function playWrong() {
+  try {
+    if (!audioCtx) initAudio();
+    resumeAudio();
+    var ctx = audioCtx; if (!ctx) return;
+    var buf = ctx.createBuffer(1, ctx.sampleRate*0.3, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i=0; i<d.length; i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length,2);
+    var n = ctx.createBufferSource(); n.buffer = buf;
+    var g = ctx.createGain(); g.gain.setValueAtTime(0.35, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.25);
+    n.connect(g); g.connect(ctx.destination); n.start();
+    var o = ctx.createOscillator(); var g2 = ctx.createGain();
+    o.type='sine'; o.frequency.value=80;
+    o.frequency.exponentialRampToValueAtTime(30, ctx.currentTime+0.25);
+    g2.gain.setValueAtTime(0.4, ctx.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.25);
+    o.connect(g2); g2.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.25);
+  } catch(e) {}
+}
+function playWin() { playSound([523,659,784,1047,784,1047,1319], 0.45); }
+
+// ─── Canvas ──────────────────────────────────────────
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ─── Shuffle ─────────────────────────────────────────
+function shuffle(a) {
+  for (var i=a.length-1; i>0; i--) { var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+
+// ─── Render ──────────────────────────────────────────
+function renderAnswerArea() {
+  answerEl.innerHTML = '';
+  for (var p=0; p<4; p++) {
+    var ps = SLOTS.filter(function(s){return s.pair===p;});
+    var grp = document.createElement('div'); grp.className = 'term-group';
+    var pair = document.createElement('span'); pair.className = 'term-pair'; pair.style.borderColor = FOIL_BG[p];
+    var tag = document.createElement('div'); tag.className='foil-tag'; tag.textContent=FOIL_LABELS[p]; tag.style.color=FOIL_COLORS[p];
+    pair.appendChild(tag);
+    ps.forEach(function(slot, si) {
+      var el = document.createElement('div'); el.className='var-slot';
+      el.dataset.slotId=slot.id; el.dataset.correct=slot.correct;
+      if (state.slotContents[slot.id]) fillSlotEl(el, state.slotContents[slot.id]);
+      pair.appendChild(el);
+      if (si===0) { var t=document.createElement('span'); t.className='times-sign'; t.textContent='\u00D7'; pair.appendChild(t); }
+    });
+    grp.appendChild(pair);
+    if (p<3) { var pl=document.createElement('span'); pl.className='plus-sign'; pl.textContent='+'; grp.appendChild(pl); }
+    answerEl.appendChild(grp);
+  }
+}
+function fillSlotEl(el, vId) {
+  var v = VARS.find(function(x){return x.id===vId;});
+  el.classList.add('filled'); el.textContent=v.label;
+  el.style.borderColor=v.color; el.style.color=v.color; el.style.background=v.color+'18';
+}
+function renderVarBlocks() {
+  varsEl.innerHTML = '';
+  var order = shuffle(VARS.map(function(v){return v.id;}));
+  order.forEach(function(id) {
+    var v = VARS.find(function(x){return x.id===id;});
+    var remaining = v.total - (state.usedCounts[id]||0);
+    var b = document.createElement('div'); b.className='var-block '+v.css; b.dataset.varId=id;
+    if (remaining<=0) b.classList.add('empty');
+    b.innerHTML = v.label+'<span class="count-badge">'+remaining+'</span>';
+    varsEl.appendChild(b);
+  });
+}
+function renderDots() {
+  dotsContainer.innerHTML = '';
+  for (var i=0; i<8; i++) {
+    var d=document.createElement('div'); d.className='dot';
+    if (state.slotContents[i]!=null) d.classList.add('filled');
+    dotsContainer.appendChild(d);
+  }
+}
+function renderAll() { renderAnswerArea(); renderVarBlocks(); renderDots(); }
+
+// ─── Game logic ──────────────────────────────────────
+function onCorrect(slotId, varId) {
+  state.score++; state.slotContents[slotId]=varId;
+  scoreNum.textContent=state.score;
+  renderAll();
+  var el = answerEl.querySelector('[data-slot-id="'+slotId+'"]');
+  if (el) el.classList.add('correct-flash');
+  spawnConfetti(el); playCorrect();
+  if (state.score===8) { setTimeout(onWin,400); }
+  else {
+    messageEl.innerHTML='&#x2705; 答對了！繼續完成剩下的！';
+    setTimeout(function(){ if (state.score<8) messageEl.innerHTML='&#x1F447; 拖曳 x、a、b 到空格中'; },1200);
+  }
+}
+function onWrong(slotId) {
+  var el = answerEl.querySelector('[data-slot-id="'+slotId+'"]');
+  if (el) { el.classList.add('wrong-shake'); spawnExplosion(el); playWrong(); }
+  messageEl.innerHTML='&#x1F4A5; 不對喔，再試試看！';
+  setTimeout(function(){
+    if (el) el.classList.remove('wrong-shake');
+    if (state.score<8) messageEl.innerHTML='&#x1F447; 拖曳 x、a、b 到空格中';
+  },800);
+}
+function onWin() {
+  messageEl.className='win';
+  messageEl.innerHTML='&#x1F389;&#x1F389; 太棒了！你學會了 (x+a)(x+b) 的展開！ &#x1F389;&#x1F389;<br>'+
+    '<span style="font-size:16px;display:block;margin-top:4px;letter-spacing:1px">'+
+    '= <span style="color:#6eb5ff">x&sup2;</span> + '+
+    '<span style="color:#d8b4fe">xb</span> + '+
+    '<span style="color:#a0f0e0">ax</span> + '+
+    '<span style="color:#ffd699">ab</span></span>';
+  playWin();
+  for (var i=0;i<10;i++) { setTimeout(spawnConfetti,i*250); }
+}
+
+// ─── DRAG SYSTEM (Pointer Events for iOS 13+ & desktop) ──
+function getPos(e) {
+  if (e.touches && e.touches.length>0) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
+  if (e.changedTouches && e.changedTouches.length>0) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
+  return {x:e.clientX,y:e.clientY};
+}
+
+function startDrag(e, blockEl) {
+  if (blockEl.classList.contains('empty')) return;
+  var rect = blockEl.getBoundingClientRect();
+  var p = getPos(e);
+  var clone = blockEl.cloneNode(true);
+  clone.className = blockEl.className + ' dragging-clone';
+  clone.style.width = rect.width + 'px';
+  clone.style.height = rect.height + 'px';
+  clone.style.left = (p.x - rect.width/2) + 'px';
+  clone.style.top = (p.y - rect.height/2) + 'px';
+  document.body.appendChild(clone);
+  blockEl.style.opacity = '0.25';
+  dragData = { blockEl:blockEl, clone:clone, varId:blockEl.dataset.varId };
+  if (e.preventDefault) e.preventDefault();
+}
+
+function moveDrag(e) {
+  if (!dragData) return;
+  var p = getPos(e);
+  dragData.clone.style.left = (p.x - 38) + 'px';
+  dragData.clone.style.top = (p.y - 28) + 'px';
+  var slots = answerEl.querySelectorAll('.var-slot');
+  for (var i=0; i<slots.length; i++) slots[i].classList.remove('drag-over');
+  var target = findSlotAt(p.x, p.y);
+  if (target && !target.classList.contains('filled')) target.classList.add('drag-over');
+  if (e.preventDefault) e.preventDefault();
+}
+
+function endDrag(e) {
+  if (!dragData) return;
+  var p = getPos(e);
+  if (dragData.clone && dragData.clone.parentNode) dragData.clone.parentNode.removeChild(dragData.clone);
+  dragData.blockEl.style.opacity = '';
+  var slots = answerEl.querySelectorAll('.var-slot');
+  for (var i=0; i<slots.length; i++) slots[i].classList.remove('drag-over');
+  if (p.x != null && !isNaN(p.x)) {
+    var target = findSlotAt(p.x, p.y);
+    if (target && !target.classList.contains('filled')) {
+      checkDrop(parseInt(target.dataset.slotId), dragData.varId);
+    }
+  }
+  dragData = null;
+  if (e.preventDefault) e.preventDefault();
+}
+
+function findSlotAt(cx, cy) {
+  var slots = answerEl.querySelectorAll('.var-slot');
+  for (var i=0; i<slots.length; i++) {
+    var r = slots[i].getBoundingClientRect();
+    if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) return slots[i];
+  }
+  return null;
+}
+
+function checkDrop(slotId, varId) {
+  if (state.slotContents[slotId] != null) return;
+  var slot = SLOTS.find(function(s){return s.id===slotId;});
+  if (!slot) return;
+  var v = VARS.find(function(x){return x.id===varId;});
+  if (v.total - (state.usedCounts[varId]||0) <= 0) return;
+  state.usedCounts[varId] = (state.usedCounts[varId]||0) + 1;
+  if (slot.correct === varId) { onCorrect(slotId, varId); }
+  else { state.usedCounts[varId]--; onWrong(slotId); renderVarBlocks(); }
+}
+
+// ─── Register drag events ────────────────────────────
+// Pointer Events (works on iOS 13+, Android, desktop)
+if (window.PointerEvent) {
+  varsEl.addEventListener('pointerdown', function(e) {
+    var block = e.target.closest('.var-block');
+    if (block) startDrag(e, block);
+  });
+  document.addEventListener('pointermove', moveDrag);
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+}
+// Fallback: mouse events
+varsEl.addEventListener('mousedown', function(e) {
+  if (dragData) return;
+  var block = e.target.closest('.var-block');
+  if (block) startDrag(e, block);
+});
+document.addEventListener('mousemove', function(e) { if (dragData) moveDrag(e); });
+document.addEventListener('mouseup', function(e) { if (dragData) endDrag(e); });
+// Fallback: touch events (older iOS)
+varsEl.addEventListener('touchstart', function(e) {
+  if (dragData) return;
+  var block = e.target.closest('.var-block');
+  if (block) startDrag(e, block);
+}, { passive: false });
+document.addEventListener('touchmove', function(e) { if (dragData) { moveDrag(e); e.preventDefault(); } }, { passive: false });
+document.addEventListener('touchend', function(e) { if (dragData) { endDrag(e); } });
+document.addEventListener('touchcancel', function(e) { if (dragData) { endDrag(e); } });
+
+// ─── Particles ──────────────────────────────────────────
+function Particle(x,y,opts) {
+  opts=opts||{};
+  this.x=x;this.y=y;
+  this.vx=opts.vx||(Math.random()-0.5)*8;
+  this.vy=opts.vy||(Math.random()*-6-2);
+  this.life=opts.life||1;
+  this.decay=opts.decay||0.015+Math.random()*0.01;
+  this.size=opts.size||(5+Math.random()*8);
+  this.color=opts.color||'hsl('+Math.random()*360+',90%,60%)';
+  this.type=opts.type||'confetti';
+  this.rotation=Math.random()*360;
+  this.rotSpeed=(Math.random()-0.5)*10;
+  this.gravity=opts.gravity||0.15;
+}
+Particle.prototype.update=function(){this.x+=this.vx;this.y+=this.vy;this.vy+=this.gravity;this.vx*=0.99;this.life-=this.decay;this.rotation+=this.rotSpeed;};
+Particle.prototype.draw=function(c){
+  var a=Math.max(0,this.life);c.save();c.globalAlpha=a;c.translate(this.x,this.y);c.rotate(this.rotation*Math.PI/180);
+  if(this.type==='confetti'){c.fillStyle=this.color;c.fillRect(-this.size/2,-this.size/4,this.size,this.size/2);}
+  else{c.beginPath();c.arc(0,0,this.size*a,0,Math.PI*2);c.fillStyle=this.color;c.fill();c.beginPath();c.arc(0,0,this.size*a*0.5,0,Math.PI*2);c.fillStyle='rgba(255,255,200,0.8)';c.fill();}
+  c.restore();
+};
+function spawnConfetti(tgt){
+  var cx=window.innerWidth/2,cy=window.innerHeight/2;
+  if(tgt){var r=tgt.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;}
+  var cs=['#ffd700','#ff6b6b','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#ff6348','#2ed573','#ffa502','#7bed9f'];
+  for(var i=0;i<60;i++){particles.push(new Particle(cx,cy,{vx:(Math.random()-0.5)*12,vy:Math.random()*-10-3,color:cs[Math.floor(Math.random()*cs.length)],size:4+Math.random()*8,type:'confetti',gravity:0.12+Math.random()*0.08,decay:0.008+Math.random()*0.008,life:0.8+Math.random()*0.4}));}
+  startParticles();
+}
+function spawnExplosion(tgt){
+  var cx=window.innerWidth/2,cy=window.innerHeight/2;
+  if(tgt){var r=tgt.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;}
+  var cs=['#ff4500','#ff6348','#ffa502','#ffd700','#ff6b6b','#cc3300','#ff3300','#ffcc00'];
+  for(var i=0;i<40;i++){var a=Math.random()*Math.PI*2,s=2+Math.random()*10;particles.push(new Particle(cx,cy,{vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,color:cs[Math.floor(Math.random()*cs.length)],size:6+Math.random()*10,type:'explosion',gravity:0.2,decay:0.02+Math.random()*0.02,life:0.6+Math.random()*0.4}));}
+  startParticles();
+}
+function startParticles(){
+  if(animFrame)return;
+  function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles=particles.filter(function(p){return p.life>0;});
+    particles.forEach(function(p){p.update();p.draw(ctx);});
+    if(particles.length===0){animFrame=null;ctx.clearRect(0,0,canvas.width,canvas.height);return;}
+    animFrame=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// ─── Reset ───────────────────────────────────────────
+function resetGame() {
+  state.score=0; state.usedCounts={}; state.slotContents={};
+  scoreNum.textContent='0';
+  renderAll();
+  messageEl.className='hint'; messageEl.innerHTML='&#x1F504; 新的一局！將變數方塊拖到正確的空格中！';
+  particles=[]; if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;} ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+resetBtn.addEventListener('click', resetGame);
+
+resetGame();
+
+})();
+</script>
+</body>
+</html>
