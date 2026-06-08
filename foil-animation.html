@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>FOIL 動畫解說 - 多項式乘法</title>
+<style>
+html, body { height: 100%; overflow: hidden; width: 100%; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+body {
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  background: 
+    linear-gradient(rgba(100, 220, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 220, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(145deg, #1a8a8a, #0d5a6a, #1a7a7a, #0d6a5a);
+  background-repeat: repeat, repeat, no-repeat;
+  background-size: 40px 40px, 40px 40px, 100% 100%;
+  background-position: 0 0, 0 0, 0 0;
+  animation: gridScroll 6s linear infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: 
+    linear-gradient(135deg, rgba(255,255,255,0.03), transparent 40%, rgba(100,220,255,0.03) 60%, transparent),
+    radial-gradient(ellipse at 20% 50%, rgba(80, 220, 255, 0.20) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(255, 200, 80, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(100, 255, 220, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 20%, rgba(200, 220, 255, 0.08) 0%, transparent 40%);
+  background-blend-mode: normal;
+  background-size: 200% 200%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  animation: sweepGradient 8s ease infinite, glowPulse 3s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: linear-gradient(45deg, transparent 30%, rgba(100,220,255,0.04) 45%, rgba(255,200,80,0.04) 55%, transparent 70%);
+  animation: beamSweep 10s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes gridScroll {
+  0% { background-position: 0 0, 0 0, 0 0; }
+  100% { background-position: 40px 40px, 40px 40px, 0 0; }
+}
+@keyframes glowPulse {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+@keyframes sweepGradient {
+  0% { background-position: 0% 50%, 0% 0%, 0% 0%, 0% 0%, 0% 0%; }
+  50% { background-position: 100% 50%, 0% 0%, 0% 0%, 0% 0%, 0% 0%; }
+  100% { background-position: 0% 50%, 0% 0%, 0% 0%, 0% 0%, 0% 0%; }
+}
+@keyframes beamSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+#container {
+  background: rgba(6, 30, 40, 0.50);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 16px 20px 20px;
+  max-width: 780px;
+  width: 100%;
+  border: 1px solid rgba(100, 220, 255, 0.15);
+  box-shadow: 0 0 50px rgba(80, 200, 220, 0.12), 0 20px 60px rgba(0,0,0,0.35);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+h1 { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 2px; text-shadow: 0 0 20px rgba(100,220,255,0.25); display:flex;align-items:center;justify-content:center;gap:6px; }
+h1 span { color: #ffc107; text-shadow: 0 0 20px rgba(255,193,7,0.4); }
+.robot-icon { font-size: 28px; display:inline-block; animation: robotBounce 2s ease-in-out infinite; }
+@keyframes robotBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.subtitle { font-size: 13px; color: rgba(100, 220, 255, 0.55); margin-bottom: 10px; letter-spacing: 2px; }
+#expression-area {
+  position: relative;
+  padding: 14px 10px;
+  margin: 0 auto 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  min-height: 60px;
+}
+#expression-area .paren { color: rgba(255,255,255,0.30); font-size: 30px; }
+#expression-area .plus { color: rgba(255,255,255,0.30); font-size: 24px; margin: 0 2px; }
+.term {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 26px;
+  font-weight: 800;
+  font-style: italic;
+  transition: all 0.4s;
+  position: relative;
+  z-index: 2;
+}
+.term.highlight {
+  transform: scale(1.15);
+  filter: brightness(1.3);
+  box-shadow: 0 0 30px currentColor;
+}
+.term-a { color: #6eb5ff; }
+.term-b { color: #66d9a0; }
+.term-c { color: #ffa502; }
+.term-d { color: #ff7b7b; }
+.term.highlight-a { box-shadow: 0 0 30px rgba(110,181,255,0.6); }
+.term.highlight-b { box-shadow: 0 0 30px rgba(102,217,160,0.6); }
+.term.highlight-c { box-shadow: 0 0 30px rgba(255,165,2,0.6); }
+.term.highlight-d { box-shadow: 0 0 30px rgba(255,123,123,0.6); }
+
+#arc-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+#products-area {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 6px auto 10px;
+  flex-wrap: wrap;
+}
+.product-card {
+  width: 80px;
+  padding: 10px 4px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 2px dashed rgba(255,255,255,0.15);
+  text-align: center;
+  transition: all 0.5s;
+  position: relative;
+}
+.product-card .foil-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 4px;
+  transition: color 0.5s;
+}
+.product-card .foil-label.lit { color: inherit; }
+.letter-pair {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  margin-top: 2px;
+}
+.letter-char {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 28px;
+  font-size: 20px;
+  font-weight: 800;
+  font-style: italic;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+  border: 2px dashed rgba(255,255,255,0.10);
+  color: transparent;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(0.3);
+  opacity: 0;
+}
+.letter-char.filled {
+  border-style: solid;
+  background: rgba(255,255,255,0.12);
+  border-color: inherit;
+  color: inherit;
+  transform: scale(1);
+  opacity: 1;
+}
+.product-card.filled {
+  border-style: solid;
+  background: rgba(255,255,255,0.08);
+}
+
+#result-area {
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 2px auto 8px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.20);
+  gap: 4px;
+  flex-wrap: wrap;
+  transition: all 0.6s;
+}
+#result-area .result-term {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.5s;
+  font-style: italic;
+}
+#result-area .result-term.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+#result-area .result-plus {
+  color: rgba(255,255,255,0.25);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+#result-area .result-plus.visible { opacity: 1; }
+#result-area.complete { color: #fff; font-size: 22px; text-shadow: 0 0 20px rgba(255,215,0,0.2); }
+
+#controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 6px;
+  flex-wrap: wrap;
+}
+.ctrl-btn {
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.85);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ctrl-btn:hover { background: rgba(255,255,255,0.20); color: #fff; }
+.ctrl-btn:disabled { opacity: 0.3; pointer-events: none; }
+.ctrl-btn.primary { background: #ffc10733; border-color: #ffc10766; color: #ffc107; }
+.ctrl-btn.primary:hover { background: #ffc10755; }
+
+#step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.step-dot {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.25);
+  transition: all 0.4s;
+}
+.step-dot.lit {
+  border-color: currentColor;
+  color: #fff;
+  box-shadow: 0 0 16px currentColor;
+}
+.step-dot.done {
+  background: currentColor;
+  color: #fff;
+  border-color: currentColor;
+}
+.step-arrow { color: rgba(255,255,255,0.15); font-size: 16px; }
+
+#status-msg {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.50);
+  min-height: 24px;
+  transition: all 0.3s;
+}
+#status-msg.success { color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.3); }
+
+#bg-particles {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+#fly-overlay {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+.fly-char {
+  position: fixed;
+  font-weight: 800;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 8px;
+  transition: none;
+}
+
+@media (max-width: 700px) {
+  #container { padding: 12px 14px 16px; border-radius: 20px; }
+  h1 { font-size: 18px; }
+  #expression-area { font-size: 24px; padding: 10px 6px; }
+  .term { font-size: 22px; padding: 3px 8px; }
+  #expression-area .paren { font-size: 26px; }
+  #expression-area .plus { font-size: 20px; }
+  .product-card { width: 68px; padding: 8px 2px; }
+  .letter-char { width: 20px; height: 24px; font-size: 17px; }
+  .ctrl-btn { font-size: 12px; padding: 6px 12px; }
+  .step-dot { width: 28px; height: 28px; font-size: 11px; }
+  #result-area { font-size: 17px; padding: 8px 10px; }
+}
+@media (max-width: 480px) {
+  #container { padding: 10px 8px 14px; border-radius: 16px; }
+  h1 { font-size: 15px; }
+  .subtitle { font-size: 11px; }
+  #expression-area { font-size: 20px; padding: 8px 4px; min-height: 48px; }
+  .term { font-size: 18px; padding: 2px 6px; border-radius: 7px; }
+  #expression-area .paren { font-size: 22px; }
+  #expression-area .plus { font-size: 17px; }
+  .product-card { width: 58px; padding: 6px 2px; border-radius: 8px; }
+  .product-card .foil-label { font-size: 10px; }
+  .letter-char { width: 18px; height: 20px; font-size: 14px; }
+  #products-area { gap: 6px; }
+  .ctrl-btn { font-size: 11px; padding: 5px 10px; min-width: 36px; }
+  .step-dot { width: 24px; height: 24px; font-size: 10px; }
+  #result-area { font-size: 14px; padding: 6px 8px; min-height: 32px; }
+  #status-msg { font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-particles"></canvas>
+
+<div id="container">
+  <h1><span class="robot-icon">🤖</span> 多項式乘法 <span>F. O. I. L.</span> 動畫解說</h1>
+  <div class="subtitle">一步一步看懂多項式乘法</div>
+
+  <div id="expression-area">
+    <span class="paren">(</span>
+    <span class="term term-a" id="term-a">a</span>
+    <span class="plus">+</span>
+    <span class="term term-b" id="term-b">b</span>
+    <span class="paren">)</span>
+    <span class="paren">(</span>
+    <span class="term term-c" id="term-c">c</span>
+    <span class="plus">+</span>
+    <span class="term term-d" id="term-d">d</span>
+    <span class="paren">)</span>
+    <canvas id="arc-canvas"></canvas>
+  </div>
+
+  <div id="products-area">
+    <div class="product-card" id="card-f" data-step="0" style="border-color:#b0c4ff44">
+      <div class="foil-label" style="color:#b0c4ff">F</div>
+      <div class="letter-pair">
+        <span class="letter-char" id="fc-f1"></span>
+        <span class="letter-char" id="fc-f2"></span>
+      </div>
+    </div>
+    <div class="product-card" id="card-o" data-step="1" style="border-color:#d8b4fe44">
+      <div class="foil-label" style="color:#d8b4fe">O</div>
+      <div class="letter-pair">
+        <span class="letter-char" id="fc-o1"></span>
+        <span class="letter-char" id="fc-o2"></span>
+      </div>
+    </div>
+    <div class="product-card" id="card-i" data-step="2" style="border-color:#a0f0e044">
+      <div class="foil-label" style="color:#a0f0e0">I</div>
+      <div class="letter-pair">
+        <span class="letter-char" id="fc-i1"></span>
+        <span class="letter-char" id="fc-i2"></span>
+      </div>
+    </div>
+    <div class="product-card" id="card-l" data-step="3" style="border-color:#ffd69944">
+      <div class="foil-label" style="color:#ffd699">L</div>
+      <div class="letter-pair">
+        <span class="letter-char" id="fc-l1"></span>
+        <span class="letter-char" id="fc-l2"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="result-area">
+    <span style="color:rgba(255,255,255,0.30)">=</span>
+    <span class="result-term" style="color:#b0c4ff" data-idx="0">ac</span>
+    <span class="result-plus" data-idx="0">+</span>
+    <span class="result-term" style="color:#d8b4fe" data-idx="1">ad</span>
+    <span class="result-plus" data-idx="1">+</span>
+    <span class="result-term" style="color:#a0f0e0" data-idx="2">bc</span>
+    <span class="result-plus" data-idx="2">+</span>
+    <span class="result-term" style="color:#ffd699" data-idx="3">bd</span>
+  </div>
+
+  <div id="controls">
+    <button class="ctrl-btn" id="restart-btn" title="重新開始">&#x1F504;</button>
+    <button class="ctrl-btn primary" id="play-btn">&#x25B6; 播放</button>
+    <button class="ctrl-btn" id="pause-btn" disabled>&#x23F8; 暫停</button>
+    <div id="step-indicator">
+      <span class="step-dot" data-idx="0" style="color:#b0c4ff">F</span>
+      <span class="step-arrow">&#x25B6;</span>
+      <span class="step-dot" data-idx="1" style="color:#d8b4fe">O</span>
+      <span class="step-arrow">&#x25B6;</span>
+      <span class="step-dot" data-idx="2" style="color:#a0f0e0">I</span>
+      <span class="step-arrow">&#x25B6;</span>
+      <span class="step-dot" data-idx="3" style="color:#ffd699">L</span>
+    </div>
+  </div>
+
+  <div id="status-msg">&#x25B6; 按「播放」開始學習 FOIL 乘法！</div>
+</div>
+
+<div id="fly-overlay"></div>
+
+<script>
+(function(){
+'use strict';
+
+var letterColors = { a:'#6eb5ff', b:'#66d9a0', c:'#ffa502', d:'#ff7b7b' };
+var steps = [
+  { from: 'a', to: 'c', result: 'ac', color: '#b0c4ff', cardLetters: ['a','c'] },
+  { from: 'a', to: 'd', result: 'ad', color: '#d8b4fe', cardLetters: ['a','d'] },
+  { from: 'b', to: 'c', result: 'bc', color: '#a0f0e0', cardLetters: ['b','c'] },
+  { from: 'b', to: 'd', result: 'bd', color: '#ffd699', cardLetters: ['b','d'] }
+];
+
+// ─── Audio ─────────────────────────────────────────────
+var audioCtx = null;
+function initAudio() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e) {} }
+}
+function resumeAudio() {
+  if (audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+}
+document.addEventListener('touchstart', function(){initAudio();},{once:true});
+document.addEventListener('mousedown', function(){initAudio();},{once:true});
+
+function playChime() {
+  try {
+    if (!audioCtx) initAudio(); resumeAudio();
+    var ctx = audioCtx; if (!ctx) return;
+    var now = ctx.currentTime;
+    [523, 659, 784].forEach(function(f,i){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.15, now + i * 0.1);
+      g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.35);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.35);
+    });
+  } catch(e) {}
+}
+function playComplete() {
+  try {
+    if (!audioCtx) initAudio(); resumeAudio();
+    var ctx = audioCtx; if (!ctx) return;
+    var now = ctx.currentTime;
+    [523, 659, 784, 1047, 1319].forEach(function(f,i){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.2, now + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.5);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(now + i * 0.12); o.stop(now + i * 0.12 + 0.5);
+    });
+  } catch(e) {}
+}
+
+// ─── Flying Letter Animation ──────────────────────────
+function flyLetter(ch, color, fromId, toEl, callback) {
+  var fromEl = document.getElementById('term-'+fromId);
+  var fromRect = fromEl.getBoundingClientRect();
+  var toRect = toEl.getBoundingClientRect();
+  var flyEl = document.createElement('div');
+  flyEl.className = 'fly-char';
+  flyEl.textContent = ch;
+  flyEl.style.cssText = 'color:'+color+';background:'+color+'22;border:2px solid '+color+
+    ';font-size:26px;width:'+fromRect.width+'px;height:'+fromRect.height+'px;'+
+    'left:'+fromRect.left+'px;top:'+fromRect.top+'px;';
+  document.getElementById('fly-overlay').appendChild(flyEl);
+  var startTime = null;
+  var duration = 1600;
+  var sx = fromRect.left, sy = fromRect.top;
+  var ex = toRect.left + toRect.width/2 - fromRect.width/2;
+  var ey = toRect.top + toRect.height/2 - fromRect.height/2;
+  var arcHeight = Math.max(60, Math.abs(ex - sx) * 0.25);
+  function animate(ts) {
+    if (!startTime) startTime = ts;
+    var p = Math.min(1, (ts - startTime) / duration);
+    var ease = 1 - Math.pow(1 - p, 3);
+    var t = ease;
+    var x = sx + (ex - sx) * t;
+    var arc = arcHeight * 4 * t * (1 - t);
+    var y = sy + (ey - sy) * t - arc;
+    flyEl.style.left = x + 'px';
+    flyEl.style.top = y + 'px';
+    if (p >= 1) {
+      setTimeout(function(){
+        flyEl.remove();
+        if (callback) callback();
+      }, 50);
+      return;
+    }
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+}
+
+var state = {
+  phase: 'idle',
+  currentStep: -1,
+  arcProgress: 0,
+  revealProgress: 0,
+  animId: null,
+  stepTimer: null,
+  stepPause: false,
+  _stepCompleted: false
+};
+
+var canvas = document.getElementById('arc-canvas');
+var ctx = canvas.getContext('2d');
+var exprArea = document.getElementById('expression-area');
+var terms = {
+  a: document.getElementById('term-a'),
+  b: document.getElementById('term-b'),
+  c: document.getElementById('term-c'),
+  d: document.getElementById('term-d')
+};
+var cards = [
+  document.getElementById('card-f'),
+  document.getElementById('card-o'),
+  document.getElementById('card-i'),
+  document.getElementById('card-l')
+];
+var dots = document.querySelectorAll('.step-dot');
+var resultTerms = document.querySelectorAll('.result-term');
+var resultPlus = document.querySelectorAll('.result-plus');
+var resultArea = document.getElementById('result-area');
+var statusMsg = document.getElementById('status-msg');
+var playBtn = document.getElementById('play-btn');
+var pauseBtn = document.getElementById('pause-btn');
+var restartBtn = document.getElementById('restart-btn');
+
+function resizeCanvas() {
+  var rect = exprArea.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+}
+window.addEventListener('resize', resizeCanvas);
+
+function getTermCenter(id) {
+  var el = terms[id];
+  var exprRect = exprArea.getBoundingClientRect();
+  var elRect = el.getBoundingClientRect();
+  return {
+    x: elRect.left + elRect.width/2 - exprRect.left,
+    y: elRect.top + elRect.height/2 - exprRect.top
+  };
+}
+
+function drawArc(p1, p2, progress, color, alpha) {
+  var midX = (p1.x + p2.x) / 2;
+  var midY = Math.min(p1.y, p2.y) - 50 - (1 - progress) * 60;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y);
+  var numSeg = 60;
+  var drawTo = Math.round(numSeg * progress);
+  for (var i = 1; i <= drawTo; i++) {
+    var t = i / numSeg;
+    var x = (1-t)*(1-t)*p1.x + 2*(1-t)*t*midX + t*t*p2.x;
+    var y = (1-t)*(1-t)*p1.y + 2*(1-t)*t*midY + t*t*p2.y;
+    ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = alpha;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  if (progress >= 1) {
+    ctx.beginPath();
+    ctx.arc(midX, midY - 20, 16, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.6;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+var charEls = [
+  [document.getElementById('fc-f1'), document.getElementById('fc-f2')],
+  [document.getElementById('fc-o1'), document.getElementById('fc-o2')],
+  [document.getElementById('fc-i1'), document.getElementById('fc-i2')],
+  [document.getElementById('fc-l1'), document.getElementById('fc-l2')]
+];
+
+function resetAll() {
+  if (state.animId) { cancelAnimationFrame(state.animId); state.animId = null; }
+  if (state.stepTimer) { clearTimeout(state.stepTimer); state.stepTimer = null; }
+  state.phase = 'idle';
+  state.currentStep = -1;
+  state.arcProgress = 0;
+  state.revealProgress = 0;
+  state.stepPause = false;
+  state._stepCompleted = false;
+  stepDone = [false, false, false, false];
+  stepLetter1Done = [false, false, false, false];
+  stepLetter2Done = [false, false, false, false];
+  clearCanvas();
+  Object.keys(terms).forEach(function(k){ terms[k].className = 'term term-'+k; });
+  cards.forEach(function(c){ c.className = 'product-card'; });
+  dots.forEach(function(d){ d.className = 'step-dot'; });
+  resultTerms.forEach(function(t){ t.className = 'result-term'; });
+  resultPlus.forEach(function(p){ p.className = 'result-plus'; });
+  resultArea.className = '';
+  charEls.forEach(function(pair){
+    pair.forEach(function(el){
+      el.className = 'letter-char';
+      el.textContent = '';
+    });
+  });
+  playBtn.disabled = false; playBtn.innerHTML = '&#x25B6; 播放';
+  pauseBtn.disabled = true;
+  statusMsg.className = '';
+  statusMsg.innerHTML = '&#x25B6; 按「播放」開始學習 FOIL 乘法！';
+}
+
+function advanceStep() {
+  if (state.phase === 'paused') return;
+  if (state.phase === 'idle') {
+    state.currentStep = 0;
+    state.phase = 'playing';
+    state.arcProgress = 0;
+    state.revealProgress = 0;
+    runStepAnimation(0);
+    return;
+  }
+  if (state.currentStep < 3) {
+    state.currentStep++;
+    state.arcProgress = 0;
+    state.revealProgress = 0;
+    runStepAnimation(state.currentStep);
+  } else {
+    completeAll();
+  }
+}
+
+var stepLabels = ['F (First) 前兩項', 'O (Outer) 外層', 'I (Inner) 內層', 'L (Last) 最後'];
+
+function fillChar(el, ch, color) {
+  el.textContent = ch;
+  el.className = 'letter-char filled';
+  el.style.borderColor = color;
+  el.style.color = color;
+  el.style.background = color + '22';
+}
+
+var stepDone = [false, false, false, false];
+var stepLetter1Done = [false, false, false, false];
+var stepLetter2Done = [false, false, false, false];
+
+function runStepAnimation(stepIdx) {
+  if (state.phase === 'paused') return;
+  var step = steps[stepIdx];
+  stepDone[stepIdx] = false;
+  stepLetter1Done[stepIdx] = false;
+  stepLetter2Done[stepIdx] = false;
+  playBtn.disabled = true;
+  pauseBtn.disabled = false;
+  statusMsg.className = '';
+  statusMsg.innerHTML = '步驟 ' + (stepIdx+1) + '/4：' + stepLabels[stepIdx];
+
+  var fromEl = terms[step.from];
+  var toEl = terms[step.to];
+  fromEl.className = 'term term-'+step.from + ' highlight highlight-'+step.from;
+  toEl.className = 'term term-'+step.to + ' highlight highlight-'+step.to;
+
+  cards[stepIdx].classList.add('filled');
+
+  var startTime = null;
+  var arcDuration = 700;
+  var letter1Delay = 900;
+  var letter2Delay = 900;
+  var completeDelay = 2800;
+
+  function animateStep(timestamp) {
+    if (!startTime) startTime = timestamp;
+    var elapsed = timestamp - startTime;
+    if (state.phase === 'paused') {
+      state.animId = requestAnimationFrame(animateStep);
+      return;
+    }
+    var arcProg = Math.min(1, elapsed / arcDuration);
+    state.arcProgress = arcProg;
+    var p1 = getTermCenter(step.from);
+    var p2 = getTermCenter(step.to);
+    drawArc(p1, p2, arcProg, step.color, 0.8);
+
+    if (elapsed >= letter1Delay && !state.stepPause && !stepLetter1Done[stepIdx] && !charEls[stepIdx][0].textContent) {
+      stepLetter1Done[stepIdx] = true;
+      initAudio(); resumeAudio();
+      flyLetter(step.cardLetters[0], letterColors[step.cardLetters[0]], step.cardLetters[0], charEls[stepIdx][0], function(){
+        fillChar(charEls[stepIdx][0], step.cardLetters[0], letterColors[step.cardLetters[0]]);
+      });
+    }
+    if (elapsed >= letter2Delay && !state.stepPause && !stepLetter2Done[stepIdx] && !charEls[stepIdx][1].textContent) {
+      stepLetter2Done[stepIdx] = true;
+      flyLetter(step.cardLetters[1], letterColors[step.cardLetters[1]], step.cardLetters[1], charEls[stepIdx][1], function(){
+        fillChar(charEls[stepIdx][1], step.cardLetters[1], letterColors[step.cardLetters[1]]);
+      });
+    }
+    if (elapsed >= completeDelay && !state.stepPause && charEls[stepIdx][1].textContent) {
+      if (!state._stepCompleted) {
+        state._stepCompleted = true;
+        dots[stepIdx].className = 'step-dot done';
+        dots[stepIdx].style.color = step.color;
+        resultTerms[stepIdx].className = 'result-term visible';
+        if (stepIdx > 0) {
+          resultPlus[stepIdx-1].className = 'result-plus visible';
+        }
+        playChime();
+      }
+    }
+    if (elapsed >= completeDelay + 800) {
+      state.animId = null;
+      state._stepCompleted = false;
+      if (state.phase !== 'paused') {
+        if (stepIdx < 3) {
+          state.stepTimer = setTimeout(function(){ advanceStep(); }, 400);
+        } else {
+          completeAll();
+        }
+      }
+      return;
+    }
+    state.animId = requestAnimationFrame(animateStep);
+  }
+  state.animId = requestAnimationFrame(animateStep);
+}
+
+function completeAll() {
+  state.phase = 'complete';
+  state.currentStep = 4;
+  playBtn.disabled = true;
+  pauseBtn.disabled = true;
+  statusMsg.className = 'success';
+  statusMsg.innerHTML = '&#x1F389; 完成！(a+b)(c+d) = ac + ad + bc + bd';
+  resultArea.className = 'complete';
+  spawnConfetti();
+  playComplete();
+  playBtn.innerHTML = '&#x2714; 完成';
+}
+
+function startPlay() {
+  if (state.phase === 'idle') {
+    advanceStep();
+  } else if (state.phase === 'paused') {
+    state.phase = 'playing';
+    playBtn.disabled = true;
+    pauseBtn.disabled = false;
+    if (state.animId === null && state.currentStep >= 0 && state.currentStep < 4) {
+      runStepAnimation(state.currentStep);
+    }
+  }
+}
+
+function pausePlay() {
+  if (state.phase === 'playing') {
+    state.phase = 'paused';
+    playBtn.disabled = false; playBtn.innerHTML = '&#x25B6; 繼續';
+    pauseBtn.disabled = true;
+    statusMsg.innerHTML = '&#x23F8; 已暫停';
+  }
+}
+
+playBtn.addEventListener('click', startPlay);
+pauseBtn.addEventListener('click', pausePlay);
+restartBtn.addEventListener('click', function(){ resetAll(); clearCanvas(); });
+
+resizeCanvas();
+
+// ─── Background Particles ─────────────────────────────
+var bgCanvas = document.getElementById('bg-particles');
+var bgCtx = bgCanvas.getContext('2d');
+var bgParticles = [];
+var bgAnim = null;
+
+function resizeBg() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeBg);
+resizeBg();
+
+function initBgParticles() {
+  bgParticles = [];
+  for (var i = 0; i < 120; i++) {
+    bgParticles.push({
+      x: Math.random() * bgCanvas.width,
+      y: Math.random() * bgCanvas.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4 - 0.15,
+      r: 1.5 + Math.random() * 3.5,
+      a: 0.3 + Math.random() * 0.5,
+      pulse: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.01 + Math.random() * 0.03,
+      color: ['rgba(100,220,255,', 'rgba(255,200,80,', 'rgba(80,255,220,', 'rgba(200,220,255,'][Math.floor(Math.random()*4)]
+    });
+  }
+  for (var i = 0; i < 15; i++) {
+    bgParticles.push({
+      x: Math.random() * bgCanvas.width,
+      y: Math.random() * bgCanvas.height,
+      vx: (Math.random() - 0.5) * 0.15,
+      vy: -0.1 - Math.random() * 0.2,
+      r: 4 + Math.random() * 5,
+      a: 0.5 + Math.random() * 0.3,
+      pulse: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.005 + Math.random() * 0.01,
+      color: ['rgba(255,255,255,', 'rgba(100,220,255,', 'rgba(255,220,150,'][Math.floor(Math.random()*3)]
+    });
+  }
+}
+
+function startBgLoop() {
+  initBgParticles();
+  function loop() {
+    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+    bgParticles.forEach(function(p){
+      p.x += p.vx;
+      p.y += p.vy;
+      p.pulse += p.pulseSpeed;
+      if (p.x < 0) p.x = bgCanvas.width;
+      if (p.x > bgCanvas.width) p.x = 0;
+      if (p.y < 0) p.y = bgCanvas.height;
+      if (p.y > bgCanvas.height) p.y = 0;
+      var a = p.a * (0.5 + 0.5 * Math.sin(p.pulse));
+      bgCtx.beginPath();
+      bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      bgCtx.fillStyle = p.color + a + ')';
+      bgCtx.fill();
+    });
+    bgAnim = requestAnimationFrame(loop);
+  }
+  loop();
+}
+startBgLoop();
+
+// ─── Confetti ─────────────────────────────────────────
+var particles = [];
+var canvasConf = document.createElement('canvas');
+canvasConf.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999';
+document.body.appendChild(canvasConf);
+var cctx = canvasConf.getContext('2d');
+var confettiAnim = null;
+
+function resizeConfetti() {
+  canvasConf.width = window.innerWidth;
+  canvasConf.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeConfetti);
+resizeConfetti();
+
+function spawnConfetti() {
+  var colors = ['#ffd700','#ff6b6b','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#ff6348','#2ed573','#ffa502','#7bed9f'];
+  for (var i = 0; i < 80; i++) {
+    particles.push({
+      x: window.innerWidth / 2 + (Math.random()-0.5) * 200,
+      y: window.innerHeight / 2,
+      vx: (Math.random()-0.5) * 14,
+      vy: Math.random() * -12 - 3,
+      life: 1,
+      decay: 0.006 + Math.random() * 0.008,
+      size: 4 + Math.random() * 8,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random()-0.5) * 12,
+      gravity: 0.15 + Math.random() * 0.06
+    });
+  }
+  if (!confettiAnim) {
+    function loop() {
+      cctx.clearRect(0, 0, canvasConf.width, canvasConf.height);
+      particles = particles.filter(function(p){ return p.life > 0; });
+      particles.forEach(function(p){
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.vx *= 0.99;
+        p.life -= p.decay;
+        p.rotation += p.rotSpeed;
+        var a = Math.max(0, p.life);
+        cctx.save();
+        cctx.globalAlpha = a;
+        cctx.translate(p.x, p.y);
+        cctx.rotate(p.rotation * Math.PI / 180);
+        cctx.fillStyle = p.color;
+        cctx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2);
+        cctx.restore();
+      });
+      if (particles.length === 0) {
+        confettiAnim = null;
+        cctx.clearRect(0, 0, canvasConf.width, canvasConf.height);
+        return;
+      }
+      confettiAnim = requestAnimationFrame(loop);
+    }
+    loop();
+  }
+}
+
+})();
+</script>
+</body>
+</html>
