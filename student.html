@@ -267,6 +267,7 @@
         c.addEventListener('mouseleave', stop);
     }
 
+    // 🎯 智慧比對多項式解析器 - 徹底重構特徵搜捕探針
     function parsePolynomial(str, targetT2, targetT3) {
         let clean = str.toLowerCase().replace(/\s+/g, '').replace(/[()=^]/g, '');
         
@@ -305,23 +306,19 @@
             };
         }
 
-        if (targetT2 === 0 && cur.startsWith("x2")) {
-            let userConstStr = cur.replace("x2", "");
-            let targetConstStr = String(targetT3);
-            if (userConstStr.length > 0 && targetConstStr.startsWith(userConstStr) && targetConstStr.length === userConstStr.length + 1) {
-                if (targetConstStr.endsWith("1")) { 
-                    return { x2Coeff: 1, xCoeff: 0, constValue: targetT3, hasX2: true, hasX: false, hasConst: true, isPerfect: true };
-                }
-            }
-        }
+        // 🌟 核心探針安全鎖：只要字串有 x2 或是包含 x 且有 2，就絕對判定最高次項存在！
+        let hasX2 = clean.includes("x2") || /(x.*2)|(2.*x)/.test(clean);
+        let x2Coeff = hasX2 ? 1 : 0;
+        
+        let xCoeff = 0, constValue = 0;
+        let hasX = false, hasConst = false;
 
-        let x2Coeff = 0, xCoeff = 0, constValue = 0;
-        let hasX2 = false, hasX = false, hasConst = false;
-
+        // 從原本字串中拆分項
         let rawTerms = cur.split(/(?=[+-])/).filter(t => t !== "");
         rawTerms.forEach(t => {
+            // 如果是最高次項，在探針鎖已處理，這裡跳過
             if (t.includes('x') && (t.includes('2') || t.endsWith('2'))) {
-                hasX2 = true; x2Coeff = 1;
+                // 已由全域探針決定
             } else if (t.includes('x')) {
                 hasX = true;
                 let coeffStr = t.replace(/x/g, '');
@@ -361,7 +358,7 @@
 
         try {
             const r = await fetch(workerUrl, { 
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: ansBase64 }) 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: ansBase64 })
             });
             const d = await r.json();
             if(d.error) throw new Error(d.error);
@@ -384,13 +381,9 @@
             let errors = [];
 
             if (!p.isPerfect) {
-                let normalizedRawText = rawText.toLowerCase().replace(/\s+/g, '').replace(/[()=^]/g, '');
-                
-                // 🎯 核心修復：修正邏輯運算優先權，確保有解析出最高次項 (hasX2 為 true) 時，絕對不會誤判為缺少最高次項
+                // 🎯 核心修正：只有在明確沒有 X2 的情況下，才判定缺少項。杜絕一切因互斥引起的矛盾
                 if (!p.hasX2) {
-                    if (p.hasX || normalizedRawText.includes('x')) {
-                        errors.push("缺少 x<sup>2</sup> 項。");
-                    }
+                    errors.push("缺少 x<sup>2</sup> 項。");
                 } else if (p.x2Coeff !== 1) {
                     errors.push(`x<sup>2</sup> 項的係數不正確 (應為 1)。`);
                 }
@@ -422,14 +415,14 @@
             const currentFormula = `(x${signA})(x${signB})`;
 
             if (currentMode !== 'exam') {
-                fetch(workerUrl, { 
+                await fetch(workerUrl, { 
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         image: fullBase64, name, class: document.getElementById('stdClass').value, no: document.getElementById('stdNo').value,
                         quiz: `${currentFormula}||${JSON.stringify(errors)}`, identified: rawText, client_status: isCorrect ? "0" : "100",
                         is_practice: false
                     })
-                }).catch(e => {});
+                });
             }
 
             if (currentMode === 'exam') {
@@ -439,14 +432,14 @@
                 } else {
                     const correctCount = examHistory.filter(h => h.correct).length;
                     const examSummaryPayload = `🏆考核模式總結: 5題答對了 ${correctCount} 題||${JSON.stringify(examHistory)}`;
-                    fetch(workerUrl, { 
+                    await fetch(workerUrl, { 
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             image: fullBase64, name, class: document.getElementById('stdClass').value, no: document.getElementById('stdNo').value,
                             quiz: examSummaryPayload, identified: `考核完成 | 得分: ${correctCount * 20}分`, client_status: correctCount === 5 ? "0" : "100",
                             is_practice: false
                         })
-                    }).catch(e => {});
+                    });
 
                     resDiv.style.borderLeftColor = "#805ad5";
                     let rHtml = `<h3>🏆 考核模式完成報告</h3><p>學生姓名：<b>${name}</b>，本次考核總計答對了 <b style="color:#38a169; font-size:1.25em;">${correctCount}</b> / 5 題</p><table class="report-table"><tr><th>題號</th><th>考核題目</th><th>您的手寫辨識</th><th>結果評定</th></tr>`;
