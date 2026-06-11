@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師管理端 - 學生表現監控中心</title>
+    <style>
+        /* 全域盒子模型控制 */
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 20px; margin: 0; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        h1 { margin: 0; color: #1a202c; font-size: 1.5em; }
+        
+        .main { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+        .col { flex: 1; min-width: 300px; background: #edf2f7; padding: 20px; border-radius: 15px; min-height: 80vh; }
+        .title-box { text-align: center; padding: 12px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; font-size: 1.1em; }
+        
+        /* 🚀 完美一致佈局 (Scannable Layout) */
+        .card { 
+            background: white; 
+            padding: 16px; 
+            border-radius: 12px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.04); 
+            border-top: 4px solid; 
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        .card:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.07); }
+        .correct-card { border-top-color: #48bb78; }
+        .wrong-card { border-top-color: #f56565; }
+
+        .card-header-info { display: flex; justify-content: space-between; align-items: flex-start; }
+        .student-title { font-size: 1.05em; color: #1a202c; }
+        .info-row { font-size: 0.82em; color: #718096; margin-top: 5px; }
+        
+        /* 🚀 極簡摺疊手風琴引擎樣式 */
+        details { margin-top: 10px; border-top: 1px dashed #e2e8f0; padding-top: 10px; }
+        summary { 
+            font-size: 0.88em; 
+            color: #4a5568; 
+            cursor: pointer; 
+            list-style: none; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            font-weight: bold;
+            user-select: none;
+            outline: none;
+        }
+        summary::-webkit-details-marker { display: none; } /* 隱藏原生箭頭 */
+        
+        /* 智能狀態提示文字切換 (toggle-hint) */
+        summary::after { content: "▶ 點擊看答案與草稿"; color: #3182ce; font-size: 0.9em; font-weight: normal; }
+        details[open] summary::after { content: "▼ 點擊收起"; color: #718096; }
+
+        /* 展開後顯示的詳細區塊 */
+        .details-content { margin-top: 12px; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+        .math-result { background: #f7fafc; padding: 8px 12px; margin: 0 0 10px 0; font-family: monospace; border-radius: 6px; font-size: 1.05em; color: #2d3748; font-weight: bold; border-left: 3px solid #cbd5e0; }
+        .err-box-teacher { background: #fff5f5; color: #c53030; padding: 8px 12px; margin-bottom: 10px; border-radius: 6px; font-size: 0.9em; border-left: 3px solid #f56565; }
+        .err-box-teacher ul { margin: 5px 0 0 0; padding-left: 20px; }
+        
+        .image-container { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; background: #fff; }
+        .image-tag { position: absolute; top: 5px; left: 5px; background: rgba(0,0,0,0.6); color: white; padding: 2px 8px; font-size: 0.75em; border-radius: 4px; z-index: 1; }
+        img { width: 100%; display: block; cursor: zoom-in; }
+
+        /* 按鈕基本樣式 */
+        button { padding: 10px 18px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 0.9em; transition: background 0.2s; }
+        .btn-refresh { background: #3182ce; color: white; margin-right: 8px; }
+        .btn-quiz { background: #805ad5; color: white; margin-right: 8px; }
+        .btn-report { background: #319795; color: white; margin-right: 8px; }
+        .btn-clear { background: #e53e3e; color: white; }
+        button:hover { opacity: 0.9; }
+
+        /* 總體報告彈出模態框(Modal)樣式 */
+        .report-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-body { background: white; padding: 25px; border-radius: 15px; max-width: 950px; width: 95%; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .modal-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; }
+        .modal-table th, .modal-table td { border: 1px solid #e2e8f0; padding: 10px; text-align: center; vertical-align: middle; }
+        .modal-table th { background: #edf2f7; color: #2d3748; }
+        
+        .detail-cell { text-align: left; background: #f7fafc; padding: 6px; border-radius: 6px; font-size: 0.85em; margin: 2px 0; border: 1px solid #edf2f7; }
+        .detail-title { font-weight: bold; color: #4a5568; }
+        .detail-ans { font-family: monospace; font-weight: bold; }
+        .status-badge { display: inline-block; padding: 1px 5px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin-left: 4px; }
+        .badge-ok { background: #e6fffa; color: #234e52; }
+        .badge-no { background: #fff5f5; color: #742a2a; }
+        
+        .toggle-btn-group { display: flex; gap: 8px; margin-top: 15px; background: #edf2f7; padding: 6px; border-radius: 8px; width: fit-content; }
+        .btn-toggle { background: transparent; color: #4a5568; padding: 6px 12px; font-size: 0.85em; }
+        .btn-toggle.active { background: white; color: #2b6cb0; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+    </style>
+    <script>window.MathJax = { tex: { inlineMath: [['\\(', '\\)']] } };</script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1>學生練習數據收集區</h1>
+        <div>
+            <button class="btn-report" onclick="openOverallReportModal()">📊 讀取全班考核總體報告</button>
+            <button class="btn-quiz" onclick="publishTeacherQuiz()">📢 統一發放題目</button>
+            <button class="btn-refresh" onclick="fetchData()">🔄 刷新數據</button>
+            <button class="btn-clear" onclick="clearAll()">🗑️ 清空紀錄</button>
+        </div>
+    </header>
+
+    <div class="main">
+        <div class="col">
+            <div id="cTitle" class="title-box" style="background:#c6f6d5; color:#22543d;">✅ 正確 (0 人 / 正確率 0%)</div>
+            <div id="correctList"></div>
+        </div>
+        <div class="col">
+            <div id="wTitle" class="title-box" style="background:#fed7d7; color:#742a2a;">❌ 錯誤 (0 人 / 錯誤率 0%)</div>
+            <div id="wrongList"></div>
+        </div>
+    </div>
+
+    <div id="overallReportModal" class="report-modal" onclick="this.style.display='none'">
+        <div class="modal-body" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #edf2f7; padding-bottom:10px;">
+                <h2 style="margin:0; color:#2d3748;">📋 全班考核總體進度報告表</h2>
+                <button onclick="document.getElementById('overallReportModal').style.display='none'" style="background:#e2e8f0; color:#4a5568; padding:6px 14px; border-radius:6px;">關閉</button>
+            </div>
+            
+            <div class="toggle-btn-group">
+                <button id="viewBtnSimple" class="btn-toggle active" onclick="switchReportView('simple')">🔢 精簡模式 (✔/❌)</button>
+                <button id="viewBtnDetail" class="btn-toggle" onclick="switchReportView('detail')">🔍 詳細答題模式 (題目與手寫辨識)</button>
+            </div>
+
+            <div id="modalTablePlaceHolder"></div>
+        </div>
+    </div>
+
+    <script>
+        const workerUrl = "https://math-quiz.cnlo.workers.dev"; 
+        let localCacheSubmissions = [];
+        let currentReportView = "simple"; 
+
+        async function publishTeacherQuiz() {
+            function getRandomNonZero() {
+                let n = 0; while(n === 0) { n = Math.floor(Math.random() * 19) - 9; } return n;
+            }
+            const defaultA = getRandomNonZero();
+            const defaultB = getRandomNonZero();
+            const formatA = defaultA >= 0 ? `+${defaultA}` : `${defaultA}`;
+            const formatB = defaultB >= 0 ? `+${defaultB}` : `${defaultB}`;
+
+            const quizPrompt = prompt("請輸入欲統一發放給學生的題目：", `(x${formatA})(x${formatB})`);
+            if (!quizPrompt) return;
+
+            if (!/\(x[+-]\d+\)\(x[+-]\d+\)/.test(quizPrompt.replace(/\s+/g, ''))) {
+                alert("題目格式不符合規範，請確認符合如 (x-3)(x+5) 形式");
+                return;
+            }
+
+            try {
+                await fetch(workerUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: "__TEACHER_QUIZ__",
+                        quiz: quizPrompt.replace(/\s+/g, ''),
+                        identified: "__QUIZ_FLAG__"
+                    })
+                });
+                alert("📢 題目已發放！學生端將會自動加載此題目。");
+                fetchData();
+            } catch(e) {
+                alert("發布失敗: " + e.message);
+            }
+        }
+
+        async function fetchData() {
+            try {
+                const r = await fetch(workerUrl);
+                const list = await r.json();
+                localCacheSubmissions = list; // 緩存名單給總體報表使用
+
+                const cL = document.getElementById('correctList');
+                const wL = document.getElementById('wrongList');
+                cL.innerHTML = "";
+                wL.innerHTML = "";
+
+                let correct = 0;
+                let wrong = 0;
+
+                list.forEach(item => {
+                    if (item.student_name === "__TEACHER_QUIZ__") return;
+
+                    // 🎯 攔截並過濾考核總結包，使其不在主畫面渲染
+                    if (item.quiz_content && item.quiz_content.startsWith("🏆考核模式總結")) return;
+
+                    const isOk = (String(item.error_percent) === "0");
+                    if (isOk) correct++; else wrong++;
+
+                    let quizShow = item.quiz_content || "";
+                    let errHtml = "";
+                    
+                    if (quizShow.includes("||")) {
+                        const parts = quizShow.split("||");
+                        quizShow = parts[0]; 
+                        const errJson = parts[1]; 
+                        try {
+                            const errArray = JSON.parse(errJson);
+                            if (Array.isArray(errArray) && errArray.length > 0) {
+                                errHtml = `
+                                    <div class="err-box-teacher">
+                                        <b>⚠️ 學生出錯點清單：</b>
+                                        <ul>${errArray.map(e => `<li>${e}</li>`).join('')}</ul>
+                                    </div>`;
+                            }
+                        } catch(e) {}
+                    }
+
+                    const cardClass = isOk ? "correct-card" : "wrong-card";
+                    
+                    // 🚀 採用原生 <details> 實現極簡手風琴摺疊，未點開時長度與高度高度一致
+                    const html = `
+                        <div class="card ${cardClass}">
+                            <div class="card-header-info">
+                                <div>
+                                    <span class="student-title"><b>${item.student_name || '未填寫'}</b></span>
+                                    <span style="color:#718096; font-size:0.9em;">(${item.student_class || '-'}/${item.student_no || '-'})</span>
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <b>發放題目：</b>${quizShow} &nbsp;|&nbsp; <b>時間：</b>${item.created_at ? item.created_at.split(' ')[1] || item.created_at : ''}
+                            </div>
+                            
+                            <details>
+                                <summary>詳細數據</summary>
+                                <div class="details-content">
+                                    <div class="math-result">手寫辨識結果：${item.identified_text || '無資料'}</div>
+                                    ${errHtml}
+                                    <div class="image-container">
+                                        <div class="image-tag">手寫草稿+答案卷 (點擊放大)</div>
+                                        <img src="data:image/jpeg;base64,${item.image_data}" onclick="window.open(this.src)">
+                                    </div>
+                                </div>
+                            </details>
+                        </div>`;
+                    
+                    if(isOk) cL.innerHTML += html; else wL.innerHTML += html;
+                });
+
+                const total = correct + wrong;
+                const cRate = total === 0 ? 0 : Math.round((correct / total) * 100);
+                const wRate = total === 0 ? 0 : Math.round((wrong / total) * 100);
+
+                document.getElementById('cTitle').innerText = `✅ 正確 (${correct} 人 / 正確率 ${cRate}%)`;
+                document.getElementById('wTitle').innerText = `❌ 錯誤 (${wrong} 人 / 錯誤率 ${wRate}%)`;
+
+                if (document.getElementById('overallReportModal').style.display === 'flex') {
+                    renderModalTable();
+                }
+
+                if (window.MathJax) MathJax.typesetPromise();
+
+            } catch(e) {
+                alert("獲取數據失敗: " + e.message);
+            }
+        }
+
+        function switchReportView(mode) {
+            currentReportView = mode;
+            document.getElementById('viewBtnSimple').classList.toggle('active', mode === 'simple');
+            document.getElementById('viewBtnDetail').classList.toggle('active', mode === 'detail');
+            renderModalTable();
+        }
+
+        function renderModalTable() {
+            // 從快取完整數據中，單獨分離過濾出「考核模式」數據渲染報表
+            const examRecords = localCacheSubmissions.filter(item => item.quiz_content && item.quiz_content.startsWith("🏆考核模式總結"));
+            
+            if (examRecords.length === 0) {
+                document.getElementById('modalTablePlaceHolder').innerHTML = "<p style='text-align:center; padding:20px; color:#718096;'>目前資料庫中尚未收集到任何學生的「考核模式」完成成績。</p>";
+                return;
+            }
+
+            let tableHtml = `<table class="modal-table">
+                <thead>
+                    <tr>
+                        <th style="width:12%;">班別/學號</th>
+                        <th style="width:13%;">學生姓名</th>
+                        <th>第一題</th>
+                        <th>第二題</th>
+                        <th>第三題</th>
+                        <th>第四題</th>
+                        <th>第五題</th>
+                        <th style="width:12%;">考核總得分</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            examRecords.forEach(item => {
+                const parts = item.quiz_content.split("||");
+                const historyJson = parts[1];
+                
+                let stepsData = {
+                    1: { icon: "-", detail: "-" },
+                    2: { icon: "-", detail: "-" },
+                    3: { icon: "-", detail: "-" },
+                    4: { icon: "-", detail: "-" },
+                    5: { icon: "-", detail: "-" }
+                };
+                
+                let correctCount = 0;
+                
+                try {
+                    const parsedHistory = JSON.parse(historyJson);
+                    parsedHistory.forEach(h => {
+                        let isCorrect = h.correct;
+                        let icon = isCorrect ? "<span style='color:#38a169; font-weight:bold; font-size:1.2em;'>✔</span>" : "<span style='color:#e53e3e; font-weight:bold; font-size:1.1em;'>❌</span>";
+                        if (isCorrect) correctCount++;
+                        
+                        let badgeClass = isCorrect ? "badge-ok" : "badge-no";
+                        let badgeText = isCorrect ? "對" : "錯";
+                        
+                        let detailHtml = `
+                            <div class="detail-cell">
+                                <span class="detail-title">題：</span><span>${h.quiz || '-'}</span><br>
+                                <span class="detail-title">答：</span><span class="detail-ans">${h.identified || '-'}</span>
+                                <span class="status-badge ${badgeClass}">${badgeText}</span>
+                            </div>
+                        `;
+                        
+                        if (h.step >= 1 && h.step <= 5) {
+                            stepsData[h.step] = { icon: icon, detail: detailHtml };
+                        }
+                    });
+                } catch(e){}
+
+                tableHtml += `<tr>
+                    <td>${item.student_class || '-'}/${item.student_no || '-'}</td>
+                    <td><b>${item.student_name}</b></td>`;
+
+                for (let i = 1; i <= 5; i++) {
+                    if (currentReportView === "detail") {
+                        tableHtml += `<td>${stepsData[i].detail}</td>`;
+                    } else {
+                        tableHtml += `<td>${stepsData[i].icon}</td>`;
+                    }
+                }
+
+                tableHtml += `
+                    <td style="font-weight:bold; color:#805ad5; background:#f7fafc; font-size:1.1em;">${correctCount * 20} 分</td>
+                </tr>`;
+            });
+
+            tableHtml += `</tbody></table>`;
+            document.getElementById('modalTablePlaceHolder').innerHTML = tableHtml;
+            
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function openOverallReportModal() {
+            renderModalTable();
+            document.getElementById('overallReportModal').style.display = 'flex';
+        }
+
+        async function clearAll() {
+            if(!confirm("確定要刪除所有學生提交紀錄嗎？此操作不可恢復。")) return;
+            try {
+                await fetch(workerUrl, { method: 'DELETE' });
+                fetchData();
+            } catch(e) {
+                alert("清空失敗: " + e.message);
+            }
+        }
+
+        fetchData();
+        setInterval(fetchData, 5000); // 5秒自動輪詢刷新數據
+    </script>
+</body>
+</html>
