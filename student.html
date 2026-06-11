@@ -267,10 +267,11 @@
         c.addEventListener('mouseleave', stop);
     }
 
-    // 🎯 智慧比對多項式解析器 - 徹底重構特徵搜捕探針
+    // 🎯 100% 獨立防互斥多項式解析核心
     function parsePolynomial(str, targetT2, targetT3) {
         let clean = str.toLowerCase().replace(/\s+/g, '').replace(/[()=^]/g, '');
         
+        // 常見手寫錯字替代
         clean = clean.replace(/[loij]/g, '1'); 
         clean = clean.replace(/[zq]/g, '2');   
         clean = clean.replace(/[s]/g, '5');    
@@ -280,13 +281,10 @@
         let perfectAns = "x2";
         if (targetT2 > 0) perfectAns += "+" + targetT2 + "x";
         else if (targetT2 < 0) perfectAns += targetT2 + "x";
-        
         if (targetT3 > 0) perfectAns += "+" + targetT3;
         else if (targetT3 < 0) perfectAns += targetT3;
         
-        let perfectAnsShort = perfectAns;
-        if (targetT2 === 1) perfectAnsShort = perfectAns.replace("1x", "x");
-        if (targetT2 === -1) perfectAnsShort = perfectAns.replace("-1x", "-x");
+        let perfectAnsShort = perfectAns.replace("+1x", "+x").replace("-1x", "-x");
 
         if (clean === perfectAns || clean === perfectAnsShort) {
             return { 
@@ -295,30 +293,24 @@
             };
         }
 
-        let cur = clean;
-        if (/x2\d/.test(cur)) { cur = cur.replace("x2", "x2+"); }
-        if (/x\d/.test(cur)) { cur = cur.replace(/x(\d)/g, 'x+$1'); }
-        
-        if (cur === perfectAns || cur === perfectAnsShort) {
-            return { 
-                x2Coeff: 1, xCoeff: targetT2, constValue: targetT3, 
-                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0), isPerfect: true 
-            };
-        }
-
-        // 🌟 核心探針安全鎖：只要字串有 x2 或是包含 x 且有 2，就絕對判定最高次項存在！
+        // 🌟 鐵證如山探針：只要字串包含 x2 或 x^2，就絕對鎖定 hasX2 = true
         let hasX2 = clean.includes("x2") || /(x.*2)|(2.*x)/.test(clean);
         let x2Coeff = hasX2 ? 1 : 0;
         
         let xCoeff = 0, constValue = 0;
         let hasX = false, hasConst = false;
 
-        // 從原本字串中拆分項
+        // 格式化加減號以便切割
+        let cur = clean;
+        if (/x2\d/.test(cur)) { cur = cur.replace("x2", "x2+"); }
+        if (/x\d/.test(cur)) { cur = cur.replace(/x(\d)/g, 'x+$1'); }
+
         let rawTerms = cur.split(/(?=[+-])/).filter(t => t !== "");
         rawTerms.forEach(t => {
-            // 如果是最高次項，在探針鎖已處理，這裡跳過
-            if (t.includes('x') && (t.includes('2') || t.endsWith('2'))) {
-                // 已由全域探針決定
+            // 🌟 修正：只有純粹包含 x2 或是單獨的最高次項才進入此區，而且進來也要做標記
+            if (t.includes('x2') || (t.includes('x') && t.includes('2'))) {
+                hasX2 = true;
+                x2Coeff = 1;
             } else if (t.includes('x')) {
                 hasX = true;
                 let coeffStr = t.replace(/x/g, '');
@@ -367,6 +359,7 @@
             const targetT2 = currentA + currentB;
             const targetT3 = currentA * currentB;
 
+            // 防呆補全結尾符號
             if (rawText.trim().endsWith('+') || rawText.trim().endsWith('-')) {
                 if (targetT3 !== 0) {
                     if ((targetT3 > 0 && rawText.trim().endsWith('+')) || (targetT3 < 0 && rawText.trim().endsWith('-'))) {
@@ -381,7 +374,7 @@
             let errors = [];
 
             if (!p.isPerfect) {
-                // 🎯 核心修正：只有在明確沒有 X2 的情況下，才判定缺少項。杜絕一切因互斥引起的矛盾
+                // 🌟 徹底阻斷互斥邏輯：只要 hasX2 是 true，就絕對不准 push「缺少 x2 項」！
                 if (!p.hasX2) {
                     errors.push("缺少 x<sup>2</sup> 項。");
                 } else if (p.x2Coeff !== 1) {
