@@ -290,22 +290,18 @@
         if (clean === perfectAns || clean === perfectAnsShort) {
             return { 
                 x2Coeff: 1, xCoeff: targetT2, constValue: targetT3, 
-                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0) 
+                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0), isPerfect: true 
             };
         }
 
         let cur = clean;
-        if (/x2\d/.test(cur)) {
-            cur = cur.replace("x2", "x2+");
-        }
-        if (/x\d/.test(cur)) {
-            cur = cur.replace(/x(\d)/g, 'x+$1');
-        }
+        if (/x2\d/.test(cur)) { cur = cur.replace("x2", "x2+"); }
+        if (/x\d/.test(cur)) { cur = cur.replace(/x(\d)/g, 'x+$1'); }
         
         if (cur === perfectAns || cur === perfectAnsShort) {
             return { 
                 x2Coeff: 1, xCoeff: targetT2, constValue: targetT3, 
-                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0) 
+                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0), isPerfect: true 
             };
         }
 
@@ -314,7 +310,7 @@
             let targetConstStr = String(targetT3);
             if (userConstStr.length > 0 && targetConstStr.startsWith(userConstStr) && targetConstStr.length === userConstStr.length + 1) {
                 if (targetConstStr.endsWith("1")) { 
-                    return { x2Coeff: 1, xCoeff: 0, constValue: targetT3, hasX2: true, hasX: false, hasConst: true };
+                    return { x2Coeff: 1, xCoeff: 0, constValue: targetT3, hasX2: true, hasX: false, hasConst: true, isPerfect: true };
                 }
             }
         }
@@ -341,7 +337,7 @@
             }
         });
 
-        return { x2Coeff, xCoeff, constValue, hasX2, hasX, hasConst };
+        return { x2Coeff, xCoeff, constValue, hasX2, hasX, hasConst, isPerfect: false };
     }
 
     async function submit() {
@@ -387,30 +383,37 @@
             let p = parsePolynomial(rawText, targetT2, targetT3);
             let errors = [];
 
-            if (!p.hasX2 && (p.hasX || rawText.includes('x'))) {
-                errors.push("缺少 x<sup>2</sup> 項。");
-            } else if (p.hasX2 && p.x2Coeff !== 1) {
-                errors.push(`x<sup>2</sup> 項的係數不正確 (應為 1)。`);
-            }
-
-            if (targetT2 === 0) {
-                if (p.hasX && p.xCoeff !== 0) errors.push(`此題為平方差，不應有一次項。`);
-            } else {
-                if (!p.hasX && p.hasX2) {
-                    errors.push(`缺少一次項 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
-                } else if (p.hasX && p.xCoeff !== targetT2) {
-                    errors.push(`中間項計算錯誤 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
+            if (!p.isPerfect) {
+                let normalizedRawText = rawText.toLowerCase().replace(/\s+/g, '').replace(/[()=^]/g, '');
+                
+                // 🎯 核心修復：修正邏輯運算優先權，確保有解析出最高次項 (hasX2 為 true) 時，絕對不會誤判為缺少最高次項
+                if (!p.hasX2) {
+                    if (p.hasX || normalizedRawText.includes('x')) {
+                        errors.push("缺少 x<sup>2</sup> 項。");
+                    }
+                } else if (p.x2Coeff !== 1) {
+                    errors.push(`x<sup>2</sup> 項的係數不正確 (應為 1)。`);
                 }
-            }
 
-            if (!p.hasConst) {
-                errors.push(`缺少常數項 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
-            } else if (p.constValue !== targetT3) {
-                errors.push(`常數項計算錯誤 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
-            }
+                if (targetT2 === 0) {
+                    if (p.hasX && p.xCoeff !== 0) errors.push(`此題為平方差，不應有一次項。`);
+                } else {
+                    if (!p.hasX && p.hasX2) {
+                        errors.push(`缺少一次項 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
+                    } else if (p.hasX && p.xCoeff !== targetT2) {
+                        errors.push(`中間項計算錯誤 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
+                    }
+                }
 
-            if (!p.hasX2 && !p.hasX && p.hasConst) {
-                errors.unshift("未寫出完整的多項式展開式 (缺少最高次項與一次項)。");
+                if (!p.hasConst) {
+                    errors.push(`缺少常數項 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
+                } else if (p.constValue !== targetT3) {
+                    errors.push(`常數項計算錯誤 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
+                }
+
+                if (!p.hasX2 && !p.hasX && p.hasConst) {
+                    errors.unshift("未寫出完整的多項式展開式 (缺少最高次項與一次項)。");
+                }
             }
 
             const isCorrect = (errors.length === 0);
@@ -418,7 +421,6 @@
             const signB = currentB >= 0 ? `+${currentB}` : `${currentB}`;
             const currentFormula = `(x${signA})(x${signB})`;
 
-            // 🎯 已修正：不再阻斷練習數據。將 is_practice 改為 false，強制寫入 Cloudflare Worker 資料庫
             if (currentMode !== 'exam') {
                 fetch(workerUrl, { 
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
