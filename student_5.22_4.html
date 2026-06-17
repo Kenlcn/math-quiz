@@ -149,24 +149,20 @@
         } catch(e) {}
     }
 
-    // 🎯 智慧隨機出題過濾：100% 阻斷任何中間項相加等於 -1 (-x) 的題目組合
     function generateQuiz() {
         if (currentMode === 'easy') { 
-            // 初階：通常都為正數，理論上相加不會是 -1，但加上防線以確保安全
             do {
                 currentA = Math.floor(Math.random() * 8) + 2; 
                 currentB = Math.floor(Math.random() * 8) + 2; 
             } while (currentA + currentB === -1);
         }
         else if (currentMode === 'hard') { 
-            // 進階：包含正負數隨機，強制過濾中間項為 -x 的情況
             do {
                 currentA = getRandomNonZeroInt(); 
                 currentB = getRandomNonZeroInt(); 
             } while (currentA + currentB === -1);
         }
         else if (currentMode === 'exam') {
-            // 🏆 考核模式：各關卡全面實施 -x 安全攔截
             if (examStep === 1) { 
                 do {
                     currentA = Math.floor(Math.random() * 3) + 2; 
@@ -180,21 +176,18 @@
                 } while (currentA + currentB === -1);
             }
             else if (examStep === 3) { 
-                // 關卡 3：一正一負最容易踩雷，強制過濾
                 do {
                     currentA = Math.floor(Math.random() * 7) + 2; 
                     currentB = -(Math.floor(Math.random() * 7) + 2); 
                 } while (currentA + currentB === -1);
             }
             else if (examStep === 4) { 
-                // 關卡 4：兩數皆負，同樣實施安全攔截
                 do {
                     currentA = -(Math.floor(Math.random() * 7) + 2); 
                     currentB = -(Math.floor(Math.random() * 7) + 2); 
                 } while (currentA + currentB === -1);
             }
             else if (examStep === 5) { 
-                // 關卡 5：全隨機抽題，強制過濾
                 do {
                     currentA = getRandomNonZeroInt(); 
                     currentB = getRandomNonZeroInt(); 
@@ -274,7 +267,7 @@
         c.addEventListener('mouseleave', stop);
     }
 
-    // 🎯 智慧比對多項式解析器 (防止 11,21,31 被誤認吞 1 的終極修復版)
+    // 🎯 多項式特徵提取解析器
     function parsePolynomial(str, targetT2, targetT3) {
         let clean = str.toLowerCase().replace(/\s+/g, '').replace(/[()=^]/g, '');
         
@@ -298,42 +291,26 @@
         if (clean === perfectAns || clean === perfectAnsShort) {
             return { 
                 x2Coeff: 1, xCoeff: targetT2, constValue: targetT3, 
-                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0) 
+                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0), isPerfect: true 
             };
         }
+
+        // 強力探針鎖定 x^2 項
+        let hasX2 = clean.includes("x2") || /(x.*2)|(2.*x)/.test(clean);
+        let x2Coeff = hasX2 ? 1 : 0;
+        
+        let xCoeff = 0, constValue = 0;
+        let hasX = false, hasConst = false;
 
         let cur = clean;
-        if (/x2\d/.test(cur)) {
-            cur = cur.replace("x2", "x2+");
-        }
-        if (/x\d/.test(cur)) {
-            cur = cur.replace(/x(\d)/g, 'x+$1');
-        }
+        if (/x2\d/.test(cur)) { cur = cur.replace("x2", "x2+"); }
+        if (/x\d/.test(cur)) { cur = cur.replace(/x(\d)/g, 'x+$1'); }
         
-        if (cur === perfectAns || cur === perfectAnsShort) {
-            return { 
-                x2Coeff: 1, xCoeff: targetT2, constValue: targetT3, 
-                hasX2: true, hasX: (targetT2 !== 0), hasConst: (targetT3 !== 0) 
-            };
-        }
-
-        if (targetT2 === 0 && cur.startsWith("x2")) {
-            let userConstStr = cur.replace("x2", "");
-            let targetConstStr = String(targetT3);
-            if (userConstStr.length > 0 && targetConstStr.startsWith(userConstStr) && targetConstStr.length === userConstStr.length + 1) {
-                if (targetConstStr.endsWith("1")) { 
-                    return { x2Coeff: 1, xCoeff: 0, constValue: targetT3, hasX2: true, hasX: false, hasConst: true };
-                }
-            }
-        }
-
-        let x2Coeff = 0, xCoeff = 0, constValue = 0;
-        let hasX2 = false, hasX = false, hasConst = false;
-
         let rawTerms = cur.split(/(?=[+-])/).filter(t => t !== "");
         rawTerms.forEach(t => {
             if (t.includes('x') && (t.includes('2') || t.endsWith('2'))) {
-                hasX2 = true; x2Coeff = 1;
+                hasX2 = true;
+                x2Coeff = 1;
             } else if (t.includes('x')) {
                 hasX = true;
                 let coeffStr = t.replace(/x/g, '');
@@ -349,7 +326,7 @@
             }
         });
 
-        return { x2Coeff, xCoeff, constValue, hasX2, hasX, hasConst };
+        return { x2Coeff, xCoeff, constValue, hasX2, hasX, hasConst, isPerfect: false };
     }
 
     async function submit() {
@@ -373,7 +350,7 @@
 
         try {
             const r = await fetch(workerUrl, { 
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: ansBase64 }) 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: ansBase64 })
             });
             const d = await r.json();
             if(d.error) throw new Error(d.error);
@@ -395,30 +372,57 @@
             let p = parsePolynomial(rawText, targetT2, targetT3);
             let errors = [];
 
-            if (!p.hasX2 && (p.hasX || rawText.includes('x'))) {
-                errors.push("缺少 x<sup>2</sup> 項。");
-            } else if (p.hasX2 && p.x2Coeff !== 1) {
-                errors.push(`x<sup>2</sup> 項的係數不正確 (應為 1)。`);
-            }
-
-            if (targetT2 === 0) {
-                if (p.hasX && p.xCoeff !== 0) errors.push(`此題為平方差，不應有一次項。`);
-            } else {
-                if (!p.hasX && p.hasX2) {
-                    errors.push(`缺少一次項 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
-                } else if (p.hasX && p.xCoeff !== targetT2) {
-                    errors.push(`中間項計算錯誤 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
+            // 🎯【依照要求：精準三項對比機制】
+            if (rawText === "項數不足，錯誤") {
+                errors.push("<b>⚠️ 答案項數不足</b> (請寫出完整的二次多項式展開式)。");
+                
+                // 1. 輸出學生的 x2 項狀態與正確解答
+                let currentX2Str = p.hasX2 ? `x<sup>2</sup>` : "未寫出";
+                errors.push(`🔹 您的 <b>x<sup>2</sup> 項</b> 為：<span style="color:#e53e3e">${currentX2Str}</span> (正確應為：x<sup>2</sup>)`);
+                
+                // 2. 輸出學生的 中間項 狀態與正確解答
+                let currentXStr = "未寫出";
+                if (p.hasX) {
+                    currentXStr = (p.xCoeff === 1) ? "x" : ((p.xCoeff === -1) ? "-x" : `${p.xCoeff}x`);
+                    if (p.xCoeff > 0) currentXStr = "+" + currentXStr;
                 }
-            }
+                let targetXStr = targetT2 === 0 ? "不應有一次項" : (targetT2 > 0 ? `+${targetT2}x` : `${targetT2}x`);
+                if (targetXStr === "+1x") targetXStr = "+x";
+                if (targetXStr === "-1x") targetXStr = "-x";
+                errors.push(`🔹 您的 <b>中間項</b> 為：<span style="color:#e53e3e">${currentXStr}</span> (正確應為：${targetXStr})`);
+                
+                // 3. 輸出學生的 常數項 狀態與正確解答
+                let currentConstStr = p.hasConst ? (p.constValue > 0 ? `+${p.constValue}` : `${p.constValue}`) : "未寫出";
+                let targetConstStr = targetT3 > 0 ? `+${targetT3}` : `${targetT3}`;
+                errors.push(`🔹 您的 <b>常數項</b> 為：<span style="color:#e53e3e">${currentConstStr}</span> (正確應為：${targetConstStr})`);
+            } 
+            // 正常填寫但有局部計算錯誤的狀況
+            else if (!p.isPerfect) {
+                if (!p.hasX2) {
+                    errors.push("缺少 x<sup>2</sup> 項。");
+                } else if (p.x2Coeff !== 1) {
+                    errors.push(`x<sup>2</sup> 項的係數不正確 (應為 1)。`);
+                }
 
-            if (!p.hasConst) {
-                errors.push(`缺少常數項 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
-            } else if (p.constValue !== targetT3) {
-                errors.push(`常數項計算錯誤 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
-            }
+                if (targetT2 === 0) {
+                    if (p.hasX && p.xCoeff !== 0) errors.push(`此題為平方差，不應有一次項。`);
+                } else {
+                    if (!p.hasX && p.hasX2) {
+                        errors.push(`缺少一次項 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
+                    } else if (p.hasX && p.xCoeff !== targetT2) {
+                        errors.push(`中間項計算錯誤 (應為 ${targetT2 > 0 ? '+' : ''}${targetT2}x)。`);
+                    }
+                }
 
-            if (!p.hasX2 && !p.hasX && p.hasConst) {
-                errors.unshift("未寫出完整的多項式展開式 (缺少最高次項與一次項)。");
+                if (!p.hasConst) {
+                    errors.push(`缺少常數項 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
+                } else if (p.constValue !== targetT3) {
+                    errors.push(`常數項計算錯誤 (應為 ${targetT3 > 0 ? '+' : ''}${targetT3})。`);
+                }
+
+                if (!p.hasX2 && !p.hasX && p.hasConst) {
+                    errors.unshift("未寫出完整的多項式展開式 (缺少最高次項與一次項)。");
+                }
             }
 
             const isCorrect = (errors.length === 0);
@@ -427,14 +431,14 @@
             const currentFormula = `(x${signA})(x${signB})`;
 
             if (currentMode !== 'exam') {
-                fetch(workerUrl, { 
+                await fetch(workerUrl, { 
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         image: fullBase64, name, class: document.getElementById('stdClass').value, no: document.getElementById('stdNo').value,
                         quiz: `${currentFormula}||${JSON.stringify(errors)}`, identified: rawText, client_status: isCorrect ? "0" : "100",
-                        is_practice: (currentMode === 'easy' || currentMode === 'hard')
+                        is_practice: false
                     })
-                }).catch(e => {});
+                });
             }
 
             if (currentMode === 'exam') {
@@ -444,14 +448,14 @@
                 } else {
                     const correctCount = examHistory.filter(h => h.correct).length;
                     const examSummaryPayload = `🏆考核模式總結: 5題答對了 ${correctCount} 題||${JSON.stringify(examHistory)}`;
-                    fetch(workerUrl, { 
+                    await fetch(workerUrl, { 
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             image: fullBase64, name, class: document.getElementById('stdClass').value, no: document.getElementById('stdNo').value,
                             quiz: examSummaryPayload, identified: `考核完成 | 得分: ${correctCount * 20}分`, client_status: correctCount === 5 ? "0" : "100",
                             is_practice: false
                         })
-                    }).catch(e => {});
+                    });
 
                     resDiv.style.borderLeftColor = "#805ad5";
                     let rHtml = `<h3>🏆 考核模式完成報告</h3><p>學生姓名：<b>${name}</b>，本次考核總計答對了 <b style="color:#38a169; font-size:1.25em;">${correctCount}</b> / 5 題</p><table class="report-table"><tr><th>題號</th><th>考核題目</th><th>您的手寫辨識</th><th>結果評定</th></tr>`;
